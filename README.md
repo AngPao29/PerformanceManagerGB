@@ -1,0 +1,42 @@
+# Samsung Performance Mode Manager
+
+Gestisce automaticamente la modalità prestazioni del Galaxy Book in base ad alimentazione e carica batteria.
+
+## Requisiti
+
+- Windows con PowerShell 7+ (`pwsh.exe`)
+- Privilegi di Amministratore
+- Samsung Settings installato
+
+## Prima installazione
+
+Aprire un terminale **come Amministratore** ed eseguire:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File "C:\Scripts\Installa-TaskPianificato.ps1"
+```
+
+Il task partirà automaticamente ad ogni accesso.
+
+## Aggiornamento dopo modifiche
+
+Il task pianificato punta direttamente a `C:\Scripts\GestoreModalitaConsumo.ps1`, quindi basta:
+
+1. **Fermare il task in esecuzione** (terminale Amministratore):
+   ```powershell
+   Stop-ScheduledTask -TaskName "Samsung Performance Mode Manager"
+   ```
+2. **Salvare le modifiche** al file `.ps1`
+3. **Riavviare il task**:
+   ```powershell
+   Start-ScheduledTask -TaskName "Samsung Performance Mode Manager"
+   ```
+
+> Se modifichi anche `Installa-TaskPianificato.ps1` (es. parametri del task), riesegui lo script di installazione: sovrascriverà il task esistente.
+
+## Disinstallazione
+
+```powershell
+Stop-ScheduledTask -TaskName "Samsung Performance Mode Manager"
+Unregister-ScheduledTask -TaskName "Samsung Performance Mode Manager" -Confirm:$false
+```
