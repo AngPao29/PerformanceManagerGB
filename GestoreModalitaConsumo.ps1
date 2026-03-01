@@ -1,0 +1,827 @@
+#Requires -RunAsAdministrator
+
+# ============================================================================
+# Samsung Galaxy Book - Performance Mode Automatico
+# ============================================================================
+# Compatibile con Galaxy Book Pro (registro con Value sempre presente) e
+# Galaxy Book3/Book4 (Value assente finché l'utente non modifica la soglia;
+# quando assente, Samsung usa 80% come default).
+#
+# Attiva "Prestazioni Elevate" solo quando:
+#   1. Il PC è alimentato a corrente (AC)
+#   2. La batteria ha raggiunto il limite di Protezione Batteria Samsung
+# Se la Protezione Batteria è disabilitata, usa 100% come soglia (= carica completa).
+# Il limite viene letto dinamicamente dal registro ad ogni ciclo:
+#   se lo cambi in Samsung Settings, lo script si adatta automaticamente.
+# ============================================================================
+
+# --- Mutex per impedire istanze multiple ---
+$mutexName = "Global\SamsungPerformanceModeManager"
+$mutex = [System.Threading.Mutex]::new($false, $mutexName)
+if (-not $mutex.WaitOne(0)) {
+    Write-Warning "Un'altra istanza dello script è già in esecuzione. Uscita."
+    exit 1
+}
+
+try {  # try esterno: garantisce il rilascio del mutex alla fine
+
+# --- Percorsi registro Samsung ---
+$regPerformance    = "HKLM:\SOFTWARE\Samsung\SamsungSettings\ModulePerformance"
+$regProtectBattery = "HKLM:\SOFTWARE\Samsung\SamsungSettings\ModuleProtectBattery"
+
+# --- Costanti modalità Samsung ---
+$MODE_OPTIMIZED        = 2   # Ottimizzata
+$MODE_HIGH_PERFORMANCE = 3   # Prestazioni Elevate
+
+# --- Mappa nomi modalità (per log leggibili) ---
+$MODE_NAMES = @{
+    $MODE_OPTIMIZED        = 'Ottimizzata'
+    $MODE_HIGH_PERFORMANCE = 'Prestazioni Elevate'
+}
+
+# --- Mappa nomi stato batteria WMI (per log leggibili) ---
+$BATTERY_STATUS_NAMES = @{
+    1 = 'Batteria (scarica)'
+    2 = 'AC (connesso)'
+    3 = 'Carica completa'
+    4 = 'Bassa'
+    5 = 'Critica'
+    6 = 'In carica'
+    7 = 'In carica (alta)'
+    8 = 'In carica (bassa)'
+    9 = 'In carica (critica)'
+    10 = 'Non definito'
+    11 = 'Parzialmente carica'
+}
+
+# --- Costanti stato batteria WMI ---
+# BatteryStatus: 2=AC, 3=Carica completa, 6=In carica, 7=In carica (alta),
+#                8=In carica (bassa), 9=In carica (critica)
+$AC_STATUSES = @(2, 3, 6, 7, 8, 9)
+
+# --- Isteresi anti-oscillazione (%) ---
+# Evita toggle ripetuti quando la carica oscilla intorno al limite.
+# Attiva "Elevate" a >= (limite - tolleranza), torna a "Ottimizzata" solo a < (limite - margine).
+$hysteresisMargin = 3
+
+# --- Tolleranza soglia superiore (%) ---
+# Sui Galaxy Book3/Book4 con protezione batteria attiva, Samsung ferma la ricarica
+# ~1% sotto il limite impostato (es. 79% con limite 80%). Questa tolleranza
+# permette allo script di riconoscere la carica come "limite raggiunto".
+$chargeTolerance = 1
+
+# --- Intervallo di polling (secondi) ---
+$pollInterval = 30
+
+# --- Soglia predefinita protezione batteria ---
+# Sui Galaxy Book3/Book4 la proprietà "Value" nel registro non esiste finché
+# l'utente non modifica la soglia in Samsung Settings. In quel caso Samsung
+# usa 80% come limite predefinito.
+$defaultProtectionLimit = 80
+
+# --- File di log (stesso percorso dello script, max ~500 KB) ---
+$logFile    = Join-Path $PSScriptRoot "GestoreModalitaConsumo.log"
+$logMaxSize = 512KB
+
+# --- Stato condiviso con la System Tray (thread-safe) ---
+$script:trayState = [hashtable]::Synchronized(@{
+    CurrentMode   = 'Ottimizzata'
+    ChargePercent = 0
+    IsOnAC        = $false
+    IsPaused      = $false
+    SoundEnabled  = $true
+    RequestedMode = $null
+    RequestExit   = $false
+    LogFile       = $logFile
+})
+
+# ============================================================================
+# Funzione: scrive una riga di log con timestamp (rotazione semplice)
+# ============================================================================
+function Write-Log {
+    param([string]$Message)
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $line = "$timestamp  $Message"
+    try {
+        # Rotazione: se il file supera la dimensione massima, lo tronca
+        if ((Test-Path $logFile) -and (Get-Item $logFile).Length -gt $logMaxSize) {
+            # Mantieni solo l'ultima meta' delle righe
+            $lines = Get-Content $logFile -Tail 200 -Encoding UTF8
+            Set-Content $logFile -Value $lines -Encoding UTF8
+        }
+        Add-Content $logFile -Value $line -Encoding UTF8
+    }
+    catch {
+        # Se non riesce a scrivere il log, prosegui comunque
+    }
+}
+
+# ============================================================================
+# Funzione: suono di notifica sottile al cambio modalità
+# ============================================================================
+function Play-NotificationSound {
+    if (-not $script:trayState.SoundEnabled) { return }
+    try { [System.Media.SystemSounds]::Asterisk.Play() } catch { }
+}
+
+# ============================================================================
+# Funzione: legge il limite di protezione batteria dal registro Samsung
+# Restituisce il valore % se attiva, 100 se disabilitata o non leggibile
+# ============================================================================
+# - Galaxy Book Pro: "Value" è sempre presente con la soglia % impostata.
+# - Galaxy Book3/Book4: "Value" non esiste finché l'utente non cambia la soglia
+#   in Samsung Settings (default Samsung = 80%). Una volta modificata, "Value"
+#   resta anche se si riporta a 80%.
+# ============================================================================
+function Get-BatteryProtectionLimit {
+    try {
+        $protectBattery = Get-ItemProperty -Path $regProtectBattery -ErrorAction Stop
+        if ($protectBattery.OnOff -eq 1) {
+            if ($null -ne $protectBattery.Value) {
+                return [int]$protectBattery.Value
+            }
+            else {
+                # Galaxy Book3/4: Value assente → soglia predefinita Samsung
+                return $defaultProtectionLimit
+            }
+        }
+        else {
+            # Protezione disabilitata: si considera "piena" a 100%
+            return 100
+        }
+    }
+    catch {
+        # Chiave non trovata o errore di lettura → fallback sicuro
+        return 100
+    }
+}
+
+# ============================================================================
+# Funzione: legge la modalità performance attuale dal registro Samsung
+# ============================================================================
+function Get-CurrentPerformanceMode {
+    try {
+        return [int](Get-ItemProperty -Path $regPerformance -ErrorAction Stop).Value
+    }
+    catch {
+        return $null
+    }
+}
+
+# ============================================================================
+# Funzione: imposta la modalità performance nel registro Samsung
+# ============================================================================
+function Set-PerformanceMode {
+    param([int]$Mode)
+    Set-ItemProperty -Path $regPerformance -Name "Value" -Value $Mode -ErrorAction Stop
+}
+
+# ============================================================================
+# Funzione: mostra un overlay OSD (stile Samsung Fn+F11) al cambio modalità
+# Viene eseguito in un runspace STA separato, non blocca il loop principale.
+# ============================================================================
+$script:_notifPS = $null
+$script:_notifRS = $null
+
+function Show-ModeNotification {
+    param(
+        [string]$ModeName,
+        [string]$IconGlyph,
+        [string]$AccentColor,
+        [string]$Subtitle = ''
+    )
+    try {
+        # Pulizia risorse della notifica precedente
+        if ($script:_notifPS) {
+            try { $script:_notifPS.Stop(); $script:_notifPS.Dispose() } catch { }
+            try { $script:_notifRS.Close(); $script:_notifRS.Dispose() } catch { }
+        }
+
+        $script:_notifRS = [runspacefactory]::CreateRunspace()
+        $script:_notifRS.ApartmentState = "STA"
+        $script:_notifRS.ThreadOptions  = "ReuseThread"
+        $script:_notifRS.Open()
+
+        $script:_notifPS = [powershell]::Create()
+        $script:_notifPS.Runspace = $script:_notifRS
+
+        [void]$script:_notifPS.AddScript({
+            param($ModeName, $IconGlyph, $AccentColor, $Subtitle)
+            try {
+                Add-Type -AssemblyName PresentationFramework
+                Add-Type -AssemblyName PresentationCore
+                Add-Type -AssemblyName WindowsBase
+
+                $xamlString = @'
+<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+    Topmost="True" ShowInTaskbar="False" SizeToContent="WidthAndHeight"
+    ResizeMode="NoResize" Opacity="0">
+  <Window.Triggers>
+    <EventTrigger RoutedEvent="Window.Loaded">
+      <BeginStoryboard>
+        <Storyboard>
+          <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity">
+            <EasingDoubleKeyFrame KeyTime="0:0:0.0" Value="0"/>
+            <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1">
+              <EasingDoubleKeyFrame.EasingFunction>
+                <QuadraticEase EasingMode="EaseOut"/>
+              </EasingDoubleKeyFrame.EasingFunction>
+            </EasingDoubleKeyFrame>
+            <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1"/>
+            <EasingDoubleKeyFrame KeyTime="0:0:3.0" Value="0">
+              <EasingDoubleKeyFrame.EasingFunction>
+                <QuadraticEase EasingMode="EaseIn"/>
+              </EasingDoubleKeyFrame.EasingFunction>
+            </EasingDoubleKeyFrame>
+          </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+      </BeginStoryboard>
+    </EventTrigger>
+  </Window.Triggers>
+  <Border Background="#EB1E1E2E" CornerRadius="16" Padding="28,18" Margin="20"
+          BorderBrush="#1EFFFFFF" BorderThickness="1">
+    <Border.Effect>
+      <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+    </Border.Effect>
+    <StackPanel Orientation="Horizontal">
+      <TextBlock x:Name="IconText" FontFamily="Segoe MDL2 Assets" FontSize="34"
+                 VerticalAlignment="Center" Margin="0,0,18,0"/>
+      <StackPanel VerticalAlignment="Center">
+        <TextBlock Text="Modalità Prestazioni" FontSize="12"
+                   FontFamily="Segoe UI Variable, Segoe UI" FontWeight="Light"
+                   Foreground="#8CFFFFFF" Margin="0,0,0,2"/>
+        <TextBlock x:Name="ModeLabel" FontSize="20"
+                   FontFamily="Segoe UI Variable, Segoe UI" FontWeight="SemiBold"
+                   Foreground="White"/>
+        <TextBlock x:Name="SubtitleLabel" FontSize="11"
+                   FontFamily="Segoe UI Variable, Segoe UI" FontWeight="Normal"
+                   Foreground="#8CFFFFFF" Margin="0,4,0,0"/>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>
+'@
+                [xml]$xaml = $xamlString
+                $reader = [System.Xml.XmlNodeReader]::new($xaml)
+                $window = [System.Windows.Markup.XamlReader]::Load($reader)
+
+                # Imposta contenuti dinamici
+                $window.FindName("IconText").Text      = $IconGlyph
+                $window.FindName("IconText").Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString($AccentColor)
+                $window.FindName("ModeLabel").Text      = $ModeName
+
+                # Sottotitolo (info contestuale: carica, alimentazione, motivo)
+                $subtitleBlock = $window.FindName("SubtitleLabel")
+                if ($Subtitle) { $subtitleBlock.Text = $Subtitle }
+                else { $subtitleBlock.Visibility = [System.Windows.Visibility]::Collapsed }
+
+                # Posiziona in basso al centro, sopra la taskbar
+                $window.Add_Loaded({
+                    param($sender, $e)
+                    $wa = [System.Windows.SystemParameters]::WorkArea
+                    $sender.Left = $wa.Left + ($wa.Width  - $sender.ActualWidth)  / 2
+                    $sender.Top  = $wa.Bottom - $sender.ActualHeight - 40
+                })
+
+                # Chiudi dopo fine animazione (3.1 s)
+                $timer = [System.Windows.Threading.DispatcherTimer]::new()
+                $timer.Interval = [TimeSpan]::FromMilliseconds(3100)
+                $timer.Add_Tick({
+                    param($s, $e)
+                    $s.Stop()
+                    $window.Close()
+                }.GetNewClosure())
+                $timer.Start()
+
+                [void]$window.ShowDialog()
+            }
+            catch { }  # Notifica non critica: errori silenziati
+        }).AddArgument($ModeName).AddArgument($IconGlyph).AddArgument($AccentColor).AddArgument($Subtitle)
+
+        [void]$script:_notifPS.BeginInvoke()
+    }
+    catch {
+        Write-Log "WARN  Impossibile mostrare notifica OSD: $_"
+    }
+}
+
+# ============================================================================
+# Funzione: System Tray Icon (runspace STA separato con message pump WinForms)
+# Mostra stato corrente, permette di forzare la modalità o sospendere.
+# ============================================================================
+$script:_trayPS = $null
+$script:_trayRS = $null
+
+function Start-TrayIcon {
+    $script:_trayRS = [runspacefactory]::CreateRunspace()
+    $script:_trayRS.ApartmentState = "STA"
+    $script:_trayRS.ThreadOptions  = "ReuseThread"
+    $script:_trayRS.Open()
+
+    $script:_trayPS = [powershell]::Create()
+    $script:_trayPS.Runspace = $script:_trayRS
+
+    [void]$script:_trayPS.AddScript({
+        param($State)
+
+        Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
+
+        # DPI awareness: necessaria per posizionamento corretto su schermi HiDPI
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class DpiHelper {
+    [DllImport("user32.dll")]
+    public static extern bool SetProcessDPIAware();
+}
+'@ -ErrorAction SilentlyContinue
+        [DpiHelper]::SetProcessDPIAware() | Out-Null
+
+        # --- Crea icone colorate 16x16 ---
+        function New-CircleIcon([string]$HexColor) {
+            $bmp = [System.Drawing.Bitmap]::new(16, 16)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+            $g.Clear([System.Drawing.Color]::Transparent)
+            $brush = [System.Drawing.SolidBrush]::new(
+                [System.Drawing.ColorTranslator]::FromHtml($HexColor))
+            $g.FillEllipse($brush, 0, 0, 15, 15)
+            $brush.Dispose(); $g.Dispose()
+            return [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+        }
+
+        $iconOpt   = New-CircleIcon "#60CDFF"   # Blu: Ottimizzata
+        $iconPerf  = New-CircleIcon "#FFAA2C"   # Arancione: Prestazioni Elevate
+        $iconPause = New-CircleIcon "#888888"   # Grigio: Automatismo sospeso
+
+        # --- NotifyIcon ---
+        $notify = [System.Windows.Forms.NotifyIcon]::new()
+        $notify.Icon    = $iconOpt
+        $notify.Text    = "Gestore Modalita' Consumo"
+        $notify.Visible = $true
+
+        # --- Menu contestuale ---
+        $menu = [System.Windows.Forms.ContextMenuStrip]::new()
+
+        $statusItem = [System.Windows.Forms.ToolStripMenuItem]::new("Inizializzazione...")
+        $statusItem.Enabled = $false
+        [void]$menu.Items.Add($statusItem)
+        [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
+
+        $forceOptItem = [System.Windows.Forms.ToolStripMenuItem]::new("Forza Ottimizzata")
+        $forceOptItem.Add_Click({ $State.RequestedMode = 2 }.GetNewClosure())
+        [void]$menu.Items.Add($forceOptItem)
+
+        $forcePerfItem = [System.Windows.Forms.ToolStripMenuItem]::new("Forza Prestazioni Elevate")
+        $forcePerfItem.Add_Click({ $State.RequestedMode = 3 }.GetNewClosure())
+        [void]$menu.Items.Add($forcePerfItem)
+
+        [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
+
+        $pauseItem = [System.Windows.Forms.ToolStripMenuItem]::new("Sospendi automatismo")
+        $pauseItem.CheckOnClick = $true
+        $pauseItem.Add_CheckedChanged({
+            $State.IsPaused = $pauseItem.Checked
+        }.GetNewClosure())
+        [void]$menu.Items.Add($pauseItem)
+
+        $soundItem = [System.Windows.Forms.ToolStripMenuItem]::new("Suono notifica")
+        $soundItem.CheckOnClick = $true
+        $soundItem.Checked = $State.SoundEnabled
+        $soundItem.Add_CheckedChanged({
+            $State.SoundEnabled = $soundItem.Checked
+        }.GetNewClosure())
+        [void]$menu.Items.Add($soundItem)
+
+        [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
+
+        $logItem = [System.Windows.Forms.ToolStripMenuItem]::new("Apri file di log")
+        $logItem.Add_Click({
+            try { [System.Diagnostics.Process]::Start('notepad.exe', $State.LogFile) } catch { }
+        }.GetNewClosure())
+        [void]$menu.Items.Add($logItem)
+
+        [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
+
+        $exitItem = [System.Windows.Forms.ToolStripMenuItem]::new("Esci")
+        $exitItem.Add_Click({
+            $State.RequestExit = $true
+            [System.Windows.Forms.Application]::Exit()
+        }.GetNewClosure())
+        [void]$menu.Items.Add($exitItem)
+
+        $notify.ContextMenuStrip = $menu
+
+        # Metodo privato ShowContextMenu: usa TrackPopupMenuEx di Win32
+        # che posiziona e chiude il menu correttamente (anche dalla tray overflow).
+        $showMenuMethod = [System.Windows.Forms.NotifyIcon].GetMethod(
+            'ShowContextMenu',
+            [System.Reflection.BindingFlags]'Instance,NonPublic'
+        )
+
+        $notify.Add_MouseClick({
+            param($s, $e)
+            if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Right) {
+                $showMenuMethod.Invoke($notify, $null)
+            }
+        }.GetNewClosure())
+
+        # --- Timer: aggiorna tooltip e icona ogni 2s dallo stato condiviso ---
+        $timer = [System.Windows.Forms.Timer]::new()
+        $timer.Interval = 2000
+        $timer.Add_Tick({
+            $mode   = $State.CurrentMode
+            $charge = $State.ChargePercent
+            $ac     = if ($State.IsOnAC) { "AC" } else { "Batteria" }
+            $paused = $State.IsPaused
+
+            # Tooltip (max 63 caratteri per NotifyIcon.Text)
+            $tip = "Modalita': $mode`nCarica: $charge% ($ac)"
+            if ($paused) { $tip += "`nSospeso" }
+            if ($tip.Length -gt 63) { $tip = $tip.Substring(0, 63) }
+            $notify.Text = $tip
+
+            # Icona
+            if ($paused) { $notify.Icon = $iconPause }
+            elseif ($mode -eq 'Prestazioni Elevate') { $notify.Icon = $iconPerf }
+            else { $notify.Icon = $iconOpt }
+
+            # Status nel menu
+            $statusItem.Text = "$mode | $charge% ($ac)" +
+                $(if ($paused) { " | Sospeso" } else { "" })
+
+            # Shutdown richiesto dal loop principale
+            if ($State.RequestExit) { [System.Windows.Forms.Application]::Exit() }
+        }.GetNewClosure())
+        $timer.Start()
+
+        # Form nascosta come proprietaria del message pump.
+        # Necessaria perche' senza una finestra proprietaria, WinForms non
+        # riesce a calcolare correttamente la posizione del ContextMenuStrip.
+        $ownerForm = [System.Windows.Forms.Form]::new()
+        $ownerForm.ShowInTaskbar = $false
+        $ownerForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedToolWindow
+        $ownerForm.Size = [System.Drawing.Size]::new(0, 0)
+        $ownerForm.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual
+        $ownerForm.Location = [System.Drawing.Point]::new(-32000, -32000)
+        $ownerForm.Add_Shown({ $this.Hide() })
+        [System.Windows.Forms.Application]::Run($ownerForm)
+
+        # Cleanup
+        $timer.Stop(); $timer.Dispose()
+        $notify.Visible = $false; $notify.Dispose()
+    })
+
+    [void]$script:_trayPS.AddArgument($script:trayState)
+    [void]$script:_trayPS.BeginInvoke()
+}
+
+function Stop-TrayIcon {
+    try { $script:trayState.RequestExit = $true; Start-Sleep -Milliseconds 500 } catch { }
+    try { if ($script:_trayPS) { $script:_trayPS.Stop(); $script:_trayPS.Dispose() } } catch { }
+    try { if ($script:_trayRS) { $script:_trayRS.Close(); $script:_trayRS.Dispose() } } catch { }
+}
+
+# ============================================================================
+# Funzione: valuta lo stato corrente e aggiorna la modalità se necessario
+# ============================================================================
+function Update-PerformanceMode {
+    param(
+        [string]$Trigger = 'polling'
+    )
+
+    # Lettura stato batteria hardware
+    $battery = Get-CimInstance -ClassName Win32_Battery -ErrorAction Stop | Select-Object -First 1
+
+    if ($null -eq $battery) {
+        Write-Log "WARN  [$Trigger] Nessuna batteria rilevata (desktop o errore driver). Salto ciclo."
+        return
+    }
+
+    $chargePercent = $battery.EstimatedChargeRemaining
+    $batteryStatus = $battery.BatteryStatus
+    $statusName    = $BATTERY_STATUS_NAMES[[int]$batteryStatus]
+    if (-not $statusName) { $statusName = "Sconosciuto($batteryStatus)" }
+
+    # Lettura dinamica del limite dal registro Samsung (si aggiorna in tempo reale)
+    $chargeLimit = Get-BatteryProtectionLimit
+
+    # Lettura modalita' corrente
+    $currentMode = Get-CurrentPerformanceMode
+    $currentModeName = $MODE_NAMES[[int]$currentMode]
+    if (-not $currentModeName) { $currentModeName = "Sconosciuta($currentMode)" }
+
+    # --- Rilevamento alimentazione AC (copertura completa) ---
+    $isOnAC = $batteryStatus -in $AC_STATUSES
+
+    Write-Log "DEBUG [$Trigger] Stato: batteria=$statusName($batteryStatus), carica=$chargePercent%, AC=$isOnAC, limite=$chargeLimit%, modalita=$currentModeName($currentMode)"
+
+    # Aggiorna stato condiviso per la System Tray
+    $script:trayState.CurrentMode   = $currentModeName
+    $script:trayState.ChargePercent = $chargePercent
+    $script:trayState.IsOnAC        = $isOnAC
+
+    # Se l'automatismo e' sospeso dall'utente, nessun cambio automatico
+    if ($script:trayState.IsPaused) {
+        Write-Log "DEBUG [$Trigger] Automatismo sospeso, salto valutazione."
+        return
+    }
+
+    # --- Logica decisionale con isteresi ---
+    # Attiva "Elevate" quando: AC + carica >= (limite - tolleranza)
+    # Torna a "Ottimizzata" quando: non AC, oppure carica < (limite - margine)
+    # La tolleranza compensa il fatto che Samsung può fermare la ricarica 1% sotto il limite.
+    # L'isteresi evita toggle rapidi quando la carica oscilla di 1-2% intorno al limite.
+    if ($isOnAC -and ($chargePercent -ge ($chargeLimit - $chargeTolerance))) {
+        if ($currentMode -ne $MODE_HIGH_PERFORMANCE) {
+            Set-PerformanceMode -Mode $MODE_HIGH_PERFORMANCE
+            Show-ModeNotification -ModeName "Prestazioni Elevate" -IconGlyph ([char]0xE945) -AccentColor "#FFAA2C" -Subtitle "$statusName · $chargePercent% — Soglia raggiunta"
+            Play-NotificationSound
+            Write-Log "INFO  [$Trigger] Modalita' -> PRESTAZIONI ELEVATE (AC=$isOnAC, carica $chargePercent% >= limite $chargeLimit% - tolleranza $chargeTolerance%)"
+        }
+        else {
+            Write-Log "DEBUG [$Trigger] Nessun cambio: gia' in Prestazioni Elevate"
+        }
+    }
+    elseif ((-not $isOnAC) -or ($chargePercent -lt ($chargeLimit - $hysteresisMargin))) {
+        # Non su AC, oppure carica scesa sotto la soglia di isteresi
+        if ($currentMode -ne $MODE_OPTIMIZED) {
+            Set-PerformanceMode -Mode $MODE_OPTIMIZED
+            $reason = if (-not $isOnAC) { "Scollegato da corrente" } else { "Carica sotto soglia" }
+            Show-ModeNotification -ModeName "Ottimizzata" -IconGlyph ([char]0xE946) -AccentColor "#60CDFF" -Subtitle "$statusName · $chargePercent% — $reason"
+            Play-NotificationSound
+            Write-Log "INFO  [$Trigger] Modalita' -> OTTIMIZZATA (batteria=$statusName, carica $chargePercent%, limite $chargeLimit%, isteresi $hysteresisMargin%)"
+        }
+        else {
+            Write-Log "DEBUG [$Trigger] Nessun cambio: gia' in Ottimizzata"
+        }
+    }
+    else {
+        Write-Log "DEBUG [$Trigger] Zona isteresi: carica $chargePercent% in [$($chargeLimit - $hysteresisMargin)%-$chargeLimit%], mantengo $currentModeName"
+    }
+}
+
+# ============================================================================
+# Rilevamento cambio alimentazione
+# ============================================================================
+# PROBLEMA: Sia Register-ObjectEvent/Register-CimIndicationEvent (coda PS)
+# che .add_EventXxx() con scriptblock (delegate PS) causano deadlock quando
+# il main thread è bloccato su WaitOne(): i callback PowerShell tentano di
+# entrare nel runspace occupato → deadlock completo (nemmeno il timeout scatta).
+#
+# SOLUZIONE: compilare una classe C# che gestisce i callback interamente in
+# .NET puro. I lambda C# compilati eseguono sul thread nativo del watcher
+# senza mai toccare il runspace PowerShell → Set() funziona istantaneamente.
+#
+# Watcher principale: EventLog "Microsoft-Windows-Kernel-Power" EventID 105
+#   → emesso dal kernel subito al cambio AC ↔ batteria.
+#   Verificato presente su questo Galaxy Book.
+#
+# Watcher backup: WMI ManagementEventWatcher su Win32_PowerManagementEvent
+#
+# Fallback: polling ogni $pollInterval secondi per variazioni graduali.
+# ============================================================================
+$wakeSignal = [System.Threading.AutoResetEvent]::new($false)
+$eventLogWatcher = $null
+$wmiWatcher = $null
+
+# --- Flag di shutdown per garantire il cleanup ---
+$script:shutdownRequested = $false
+
+# Handler per ProcessExit (shutdown/logoff/chiusura del task)
+# In .NET, AppDomain.ProcessExit viene invocato anche durante lo shutdown del sistema.
+$null = Register-ObjectEvent -InputObject ([AppDomain]::CurrentDomain) -EventName 'ProcessExit' -Action {
+    $script:shutdownRequested = $true
+    try {
+        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Samsung\SamsungSettings\ModulePerformance' -Name 'Value' -Value 2 -ErrorAction Stop
+        $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        "$ts  INFO  [shutdown] Modalita' reimpostata a OTTIMIZZATA prima della chiusura." |
+            Out-File -FilePath (Join-Path $PSScriptRoot 'GestoreModalitaConsumo.log') -Append -Encoding utf8
+    } catch { }
+}
+
+# --- Compilazione helper C# per callback nativi ---
+# In .NET 5+/PS7, Add-Type con Roslyn non riesce a risolvere AutoResetEvent
+# a causa del multi-hop type forwarding (System.Threading → System.Private.CoreLib).
+# Soluzione: usare P/Invoke kernel32!SetEvent sull'handle nativo.
+Add-Type -AssemblyName System.Management -ErrorAction Stop
+
+$runtimeDir = [System.IO.Path]::GetDirectoryName([object].Assembly.Location)
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics.Eventing.Reader;
+using System.Management;
+
+public class PowerWakeHandler
+{
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetEvent(IntPtr hEvent);
+
+    private readonly IntPtr _handle;
+
+    public PowerWakeHandler(IntPtr eventHandle)
+    {
+        _handle = eventHandle;
+    }
+
+    public void SubscribeEventLog(EventLogWatcher watcher)
+    {
+        watcher.EventRecordWritten += (s, e) => SetEvent(_handle);
+    }
+
+    public void SubscribeWmi(ManagementEventWatcher watcher)
+    {
+        watcher.EventArrived += (s, e) => SetEvent(_handle);
+    }
+}
+'@ -ReferencedAssemblies @(
+    (Join-Path $runtimeDir 'System.Runtime.InteropServices.dll'),
+    [System.Diagnostics.Eventing.Reader.EventLogWatcher].Assembly.Location,
+    [System.Management.ManagementEventWatcher].Assembly.Location
+) -ErrorAction Stop
+
+$wakeHandler = [PowerWakeHandler]::new($wakeSignal.SafeWaitHandle.DangerousGetHandle())
+
+# --- Watcher principale: Event Log Kernel-Power EventID 105 ---
+try {
+    $xpathQuery = "*[System[Provider[@Name='Microsoft-Windows-Kernel-Power'] and (EventID=105)]]"
+    $evtQuery = [System.Diagnostics.Eventing.Reader.EventLogQuery]::new(
+        "System",
+        [System.Diagnostics.Eventing.Reader.PathType]::LogName,
+        $xpathQuery
+    )
+    $eventLogWatcher = [System.Diagnostics.Eventing.Reader.EventLogWatcher]::new($evtQuery)
+    $wakeHandler.SubscribeEventLog($eventLogWatcher)
+    $eventLogWatcher.Enabled = $true
+    Write-Log "INFO  Watcher EventLog Kernel-Power/105 registrato (C# nativo). Rilevamento AC istantaneo."
+}
+catch {
+    Write-Log "WARN  Impossibile registrare watcher EventLog Kernel-Power: $_"
+}
+
+# --- Watcher backup: WMI ManagementEventWatcher (C# nativo) ---
+try {
+    $wmiWatcher = [System.Management.ManagementEventWatcher]::new(
+        "SELECT * FROM Win32_PowerManagementEvent"
+    )
+    $wakeHandler.SubscribeWmi($wmiWatcher)
+    $wmiWatcher.Start()
+    Write-Log "INFO  Watcher WMI PowerManagementEvent registrato (C# nativo, backup)."
+}
+catch {
+    Write-Log "WARN  Impossibile registrare watcher WMI: $_"
+}
+
+$watcherCount = (@($eventLogWatcher, $wmiWatcher) | Where-Object { $_ }).Count
+if ($watcherCount -eq 0) {
+    Write-Log "WARN  Nessun watcher attivo. Solo polling ogni $pollInterval secondi."
+}
+
+# ============================================================================
+# Loop principale (event-driven con fallback polling)
+# ============================================================================
+Write-Log "Script avviato (PID $PID). Polling ogni $pollInterval secondi, $watcherCount watcher C# attivi."
+$script:loopCount = 0
+
+# --- Avvio System Tray Icon ---
+try {
+    Start-TrayIcon
+    Write-Log "INFO  System Tray icon avviata."
+}
+catch {
+    Write-Log "WARN  Impossibile avviare System Tray icon: $_"
+}
+
+# Safe-default: all'avvio imposta sempre Ottimizzata prima di valutare le condizioni.
+# Cosi' anche se il precedente shutdown non ha fatto cleanup, si riparte da Ottimizzata.
+try {
+    $currentModeAtStart = [int](Get-ItemProperty -Path $regPerformance -ErrorAction Stop).Value
+    if ($currentModeAtStart -ne $MODE_OPTIMIZED) {
+        Set-PerformanceMode -Mode $MODE_OPTIMIZED
+        Write-Log "INFO  [avvio] Safe-default: reimpostata OTTIMIZZATA (era $($MODE_NAMES[$currentModeAtStart] ?? $currentModeAtStart))."
+    }
+} catch {
+    Write-Log "WARN  [avvio] Impossibile impostare safe-default: $_"
+}
+
+# Prima esecuzione immediata: valuta le condizioni e cambia se necessario
+$modeBeforeStartup = Get-CurrentPerformanceMode
+try {
+    Update-PerformanceMode -Trigger 'avvio'
+}
+catch {
+    Write-Log "ERROR [avvio] Eccezione in Update-PerformanceMode: $_"
+}
+
+# Notifica di avvio (solo se Update-PerformanceMode non ha già mostrato un OSD)
+try {
+    $modeAfterStartup = Get-CurrentPerformanceMode
+    if ($modeBeforeStartup -eq $modeAfterStartup) {
+        $startupModeName = $MODE_NAMES[$modeAfterStartup]
+        if (-not $startupModeName) { $startupModeName = 'Attiva' }
+        $bat = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object -First 1
+        $startupSub = "Gestore avviato"
+        if ($bat) { $startupSub += " — $($bat.EstimatedChargeRemaining)%" }
+        $startupGlyph = if ($modeAfterStartup -eq $MODE_HIGH_PERFORMANCE) { [char]0xE945 } else { [char]0xE946 }
+        $startupColor = if ($modeAfterStartup -eq $MODE_HIGH_PERFORMANCE) { "#FFAA2C" } else { "#60CDFF" }
+        Show-ModeNotification -ModeName $startupModeName -IconGlyph $startupGlyph -AccentColor $startupColor -Subtitle $startupSub
+    }
+} catch {
+    Write-Log "WARN  [avvio] Impossibile mostrare notifica di avvio: $_"
+}
+
+while ($true) {
+    $script:loopCount++
+
+    # Attende: si sblocca immediatamente se un watcher C# chiama Set(),
+    # oppure dopo $pollInterval secondi (fallback per variazioni di carica graduale)
+    $waitStart = Get-Date
+    $eventFired = $wakeSignal.WaitOne($pollInterval * 1000)
+    $waitMs = [int]((Get-Date) - $waitStart).TotalMilliseconds
+
+    if ($eventFired) {
+        # Drena tutti i segnali accumulati nella coda per evitare loop a 0ms
+        $drainCount = 1
+        while ($wakeSignal.WaitOne(0)) { $drainCount++ }
+
+        Write-Log "DEBUG Evento ricevuto dopo ${waitMs}ms (ciclo #$($script:loopCount), $drainCount segnale/i drenati). Stabilizzazione 2s..."
+        Start-Sleep -Seconds 2
+        $trigger = 'evento'
+    }
+    else {
+        $trigger = 'polling'
+    }
+
+    # --- Controllo comandi dalla System Tray ---
+    if ($script:trayState.RequestExit) {
+        Write-Log "INFO  Richiesta di uscita dalla System Tray."
+        break
+    }
+
+    $requestedMode = $script:trayState.RequestedMode
+    if ($null -ne $requestedMode) {
+        $script:trayState.RequestedMode = $null
+        $reqModeName = $MODE_NAMES[$requestedMode]
+        if ($reqModeName) {
+            try {
+                Set-PerformanceMode -Mode $requestedMode
+                $glyph = if ($requestedMode -eq $MODE_HIGH_PERFORMANCE) { [char]0xE945 } else { [char]0xE946 }
+                $color  = if ($requestedMode -eq $MODE_HIGH_PERFORMANCE) { "#FFAA2C" } else { "#60CDFF" }
+                Show-ModeNotification -ModeName $reqModeName -IconGlyph $glyph -AccentColor $color -Subtitle "Impostata manualmente"
+                Play-NotificationSound
+                $script:trayState.CurrentMode = $reqModeName
+                Write-Log "INFO  [tray] Modalita' forzata a $reqModeName dall'utente."
+            }
+            catch {
+                Write-Log "ERROR [tray] Impossibile forzare modalita': $_"
+            }
+        }
+    }
+
+    try {
+        Update-PerformanceMode -Trigger $trigger
+    }
+    catch {
+        Write-Log "ERROR [$trigger] Eccezione in Update-PerformanceMode: $_"
+    }
+}
+
+}  # fine try esterno (mutex)
+catch {
+    # Log errore fatale non catturato (es. compilazione C# fallita, eccezione critica)
+    try { Write-Log "FATAL Eccezione non gestita: $_" } catch { }
+}
+finally {
+    # Rilascio di tutte le risorse in ogni caso (chiusura, Ctrl+C, errore fatale)
+    try { Stop-TrayIcon } catch { }
+    try {
+        if ($eventLogWatcher) {
+            $eventLogWatcher.Enabled = $false
+            $eventLogWatcher.Dispose()
+        }
+        if ($wmiWatcher) {
+            $wmiWatcher.Stop()
+            $wmiWatcher.Dispose()
+        }
+    } catch { }
+
+    # Reimposta la modalità a Ottimizzata (se non già fatto dall'handler ProcessExit)
+    if (-not $script:shutdownRequested) {
+        try {
+            Set-PerformanceMode -Mode $MODE_OPTIMIZED
+            Write-Log "INFO  Modalita' reimpostata a OTTIMIZZATA alla chiusura."
+        } catch {
+            Write-Log "WARN  Impossibile reimpostare la modalita' alla chiusura: $_"
+        }
+    }
+
+    $wakeSignal.Dispose()
+    $mutex.ReleaseMutex()
+    $mutex.Dispose()
+    Write-Log "Script terminato. Risorse rilasciate."
+}
