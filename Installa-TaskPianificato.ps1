@@ -13,7 +13,22 @@ if (-not (Test-Path $scriptPath)) {
     exit 1
 }
 
-# Rimuovi eventuale task precedente
+# Rimuovi task con il vecchio nome (migrazione)
+$legacyNames = @(
+    "Samsung Performance Mode Manager",
+    "Samsung Performance Manager",
+    "GestoreModalitaConsumo"
+)
+foreach ($legacy in $legacyNames) {
+    $legacyTask = Get-ScheduledTask -TaskName $legacy -ErrorAction SilentlyContinue
+    if ($legacyTask) {
+        Write-Host "Task legacy '$legacy' trovato. Rimuovo..." -ForegroundColor Yellow
+        Stop-ScheduledTask -TaskName $legacy -ErrorAction SilentlyContinue
+        Unregister-ScheduledTask -TaskName $legacy -Confirm:$false
+    }
+}
+
+# Rimuovi eventuale task precedente (stesso nome attuale)
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Host "Task esistente trovato. Rimuovo..." -ForegroundColor Yellow
