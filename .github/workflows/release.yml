@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release_pkg -Force | Out-Null
+          Copy-Item PerformanceManagerGB.ps1 release_pkg\
+          Copy-Item Installa-TaskPianificato.ps1 release_pkg\
+          Compress-Archive -Path release_pkg\* -DestinationPath PerformanceManagerGB.zip -Force
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        shell: pwsh
+        run: |
+          gh release create $env:TAG `
+            --title "PerformanceManagerGB $env:TAG" `
+            --notes "Release automatica per il tag $env:TAG" `
+            PerformanceManagerGB.zip

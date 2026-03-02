@@ -32,7 +32,8 @@ foreach ($legacy in $legacyNames) {
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Host "Task esistente trovato. Rimuovo..." -ForegroundColor Yellow
-    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+    Stop-ScheduledTask  -TaskName $taskName -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
 }
 
 # --- Azione: preferisce PS7 (path assoluto), fallback a Windows PowerShell 5.1 ---
