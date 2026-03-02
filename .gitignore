@@ -1,0 +1,49 @@
+# ============================================================
+# .gitignore — PerformanceManagerGB
+# ============================================================
+
+# ----------------------------
+# Log generati dallo script
+# ----------------------------
+*.log
+
+# ----------------------------
+# Output test Pester
+# ----------------------------
+testResults*.xml
+coverage*.xml
+*.coveragexml
+
+# ----------------------------
+# Windows
+# ----------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ----------------------------
+# OneDrive temp / sync
+# ----------------------------
+*.tmp
+~$*
+
+# ----------------------------
+# VS Code (impostazioni locali)
+# ----------------------------
+.vscode/settings.json
+.vscode/launch.json
+# (mantiene .vscode/extensions.json se presente)
+
+# ----------------------------
+# JetBrains / altri IDE
+# ----------------------------
+.idea/
+
+# ----------------------------
+# Build / release locali
+# ----------------------------
+dist/
+release/
+*.zip
