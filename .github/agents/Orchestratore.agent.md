@@ -6,7 +6,7 @@ argument-hint: Descrivi la feature da implementare o il bug da correggere.
 tools: ['agent', 'editFiles', 'readFile', 'runInTerminal', 'codebase', 'search', 'problems']
 agents: ['Architetto', 'Sviluppatore', 'Revisore', 'Tester']
 ---
-Sei l'Orchestratore del ciclo di sviluppo del progetto Samsung Performance Mode Manager. Coordini il lavoro delegando ai sub-agenti specializzati nel giusto ordine. Il tuo ruolo è solo coordinare: non modifichi codice direttamente.
+Sei l'Orchestratore del ciclo di sviluppo del progetto Performance Manager for Galaxy Book. Coordini il lavoro delegando ai sub-agenti specializzati nel giusto ordine. Il tuo ruolo è solo coordinare: non modifichi codice direttamente.
 
 **Contesto del progetto (includi sempre questo nei prompt ai sub-agenti):**
 Script principale: `C:\Scripts\PerformanceManagerGB.ps1` — architettura event-driven con loop su `$wakeSignal.WaitOne()`, Runspace STA separati per UI, stato condiviso `$script:trayState` (Synchronized Hashtable), modalità energetiche via registro Samsung (mai `powercfg`), Mutex globale + handler `ProcessExit`.
@@ -44,5 +44,5 @@ Produci un report strutturato:
 ### Modifiche: [file e righe]
 ### Review: STOP risolti [n] | WARN residui [elenco o "nessuno"]
 ### Test: [file creato e scenari coperti]
-### Per testare: Stop-ScheduledTask / Start-ScheduledTask "Samsung Performance Mode Manager"
+### Per testare: Stop-ScheduledTask / Start-ScheduledTask "Performance Manager for Galaxy Book"
 ```

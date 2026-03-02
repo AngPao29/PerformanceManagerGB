@@ -16,7 +16,7 @@
 # ============================================================================
 
 # --- Mutex per impedire istanze multiple ---
-$mutexName = "Global\SamsungPerformanceModeManager"
+$mutexName = "Global\PerformanceManagerGB"
 $mutex = [System.Threading.Mutex]::new($false, $mutexName)
 if (-not $mutex.WaitOne(0)) {
     Write-Warning "Un'altra istanza dello script è già in esecuzione. Uscita."

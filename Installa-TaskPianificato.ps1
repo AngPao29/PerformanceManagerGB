@@ -4,7 +4,7 @@
 # Eseguire una sola volta da un terminale con privilegi di Amministratore
 # ============================================================================
 
-$taskName   = "Samsung Performance Mode Manager"
+$taskName   = "Performance Manager for Galaxy Book"
 $scriptPath = "C:\Scripts\PerformanceManagerGB.ps1"
 
 # Verifica che lo script esista
