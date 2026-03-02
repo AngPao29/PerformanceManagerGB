@@ -85,14 +85,15 @@ $logMaxSize = 512KB
 
 # --- Stato condiviso con la System Tray (thread-safe) ---
 $script:trayState = [hashtable]::Synchronized(@{
-    CurrentMode   = 'Ottimizzata'
-    ChargePercent = 0
-    IsOnAC        = $false
-    IsPaused      = $false
-    SoundEnabled  = $true
-    RequestedMode = $null
-    RequestExit   = $false
-    LogFile       = $logFile
+    CurrentMode        = 'Ottimizzata'
+    ChargePercent      = 0
+    IsOnAC             = $false
+    IsPaused           = $false
+    SoundEnabled       = $true
+    NotifPopupEnabled  = $true
+    RequestedMode      = $null
+    RequestExit        = $false
+    LogFile            = $logFile
 })
 
 # ============================================================================
@@ -190,6 +191,7 @@ function Show-ModeNotification {
         [string]$AccentColor,
         [string]$Subtitle = ''
     )
+    if (-not $script:trayState.NotifPopupEnabled) { return }
     try {
         # Pulizia risorse della notifica precedente
         if ($script:_notifPS) {
@@ -396,6 +398,14 @@ public static class DpiHelper {
             $State.SoundEnabled = $soundItem.Checked
         }.GetNewClosure())
         [void]$menu.Items.Add($soundItem)
+
+        $popupItem = [System.Windows.Forms.ToolStripMenuItem]::new("Popup notifiche")
+        $popupItem.CheckOnClick = $true
+        $popupItem.Checked      = $State.NotifPopupEnabled
+        $popupItem.Add_CheckedChanged({
+            $State.NotifPopupEnabled = $popupItem.Checked
+        }.GetNewClosure())
+        [void]$menu.Items.Add($popupItem)
 
         [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
 
