@@ -1,5 +1,5 @@
 # =============================================================================
-# Pester v5 - Test per GestoreModalitaConsumo.ps1
+# Pester v5 - Test per PerformanceManagerGB.ps1
 # Sezioni/funzioni coperte:
 #   - $script:trayState  (chiave NotifPopupEnabled)
 #   - Show-ModeNotification  (guard + creazione runspace STA)
@@ -10,7 +10,7 @@
 # Le funzioni rilevanti vengono ridefinite inline nel BeforeAll.
 # =============================================================================
 
-Describe 'GestoreModalitaConsumo - Notifiche Popup' {
+Describe 'PerformanceManagerGB - Notifiche Popup' {
 
     BeforeAll {
         # --- Ricrea trayState identico allo script originale ---

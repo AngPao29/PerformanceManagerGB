@@ -1,15 +1,15 @@
 # =============================================================================
-# Pester v5 - Test di compatibilita' per GestoreModalitaConsumo.ps1
+# Pester v5 - Test di compatibilita' per PerformanceManagerGB.ps1
 #             e Installa-TaskPianificato.ps1
 #
 # Logiche coperte (6 scenari minimo):
 #   1. Installa-TaskPianificato.ps1 – rilevamento runtime PS
 #      a. PS7 disponibile  -> $psExe e' il path assoluto di pwsh.exe
 #      b. PS7 non disponibile -> $psExe e' 'powershell.exe'
-#   2. GestoreModalitaConsumo.ps1 – $prevModeName (if/else, ex ??)
+#   2. PerformanceManagerGB.ps1 – $prevModeName (if/else, ex ??)
 #      a. $MODE_NAMES[$key] esiste    -> nome leggibile
 #      b. $MODE_NAMES[$key] non esiste -> valore numerico come stringa
-#   3. GestoreModalitaConsumo.ps1 – Add-Type refs condizionali
+#   3. PerformanceManagerGB.ps1 – Add-Type refs condizionali
 #      a. PS7+ -> $addTypeRefs[0] e' un path assoluto (contiene \ o /)
 #      b. PS5.1 -> $addTypeRefs contiene 'System.Core' e 'System.Management'
 #
@@ -17,7 +17,7 @@
 # acquisisce Mutex globale). Le logiche sono riprodotte inline in BeforeAll.
 #
 # Esecuzione:
-#   Invoke-Pester -Path 'C:\Scripts\Tests\GestoreModalitaConsumo.Compatibility.Tests.ps1' -Output Detailed
+#   Invoke-Pester -Path 'C:\Scripts\Tests\PerformanceManagerGB.Compatibility.Tests.ps1' -Output Detailed
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -84,9 +84,9 @@ Describe 'Installa-TaskPianificato - Rilevamento runtime PowerShell' {
 }
 
 # ---------------------------------------------------------------------------
-# SEZIONE 2 – GestoreModalitaConsumo.ps1: $prevModeName (if/else, ex ??)
+# SEZIONE 2 – PerformanceManagerGB.ps1: $prevModeName (if/else, ex ??)
 # ---------------------------------------------------------------------------
-Describe 'GestoreModalitaConsumo - $prevModeName: risoluzione nome modalita''' {
+Describe 'PerformanceManagerGB - $prevModeName: risoluzione nome modalita''' {
 
     BeforeAll {
         # Riproduce la mappa e la logica del blocco safe-default:
@@ -151,9 +151,9 @@ Describe 'GestoreModalitaConsumo - $prevModeName: risoluzione nome modalita''' {
 }
 
 # ---------------------------------------------------------------------------
-# SEZIONE 3 – GestoreModalitaConsumo.ps1: Add-Type refs condizionali
+# SEZIONE 3 – PerformanceManagerGB.ps1: Add-Type refs condizionali
 # ---------------------------------------------------------------------------
-Describe 'GestoreModalitaConsumo - Add-Type refs condizionali per versione PS' {
+Describe 'PerformanceManagerGB - Add-Type refs condizionali per versione PS' {
 
     BeforeAll {
         # Riproduce la logica di selezione assembly per Add-Type:

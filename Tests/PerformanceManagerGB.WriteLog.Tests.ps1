@@ -1,5 +1,5 @@
 # =============================================================================
-# Pester v5 - Test per GestoreModalitaConsumo.ps1
+# Pester v5 - Test per PerformanceManagerGB.ps1
 # Sezioni/funzioni coperte:
 #   - Write-Log  (creazione file, formato timestamp, inclusione messaggio,
 #                 rotazione a >512 KB, silenzio errori di scrittura)
@@ -11,10 +11,10 @@
 # Le funzioni rilevanti vengono ridefinite inline nel BeforeAll.
 #
 # Esecuzione:
-#   Invoke-Pester -Path 'C:\Scripts\Tests\GestoreModalitaConsumo.WriteLog.Tests.ps1' -Output Detailed
+#   Invoke-Pester -Path 'C:\Scripts\Tests\PerformanceManagerGB.WriteLog.Tests.ps1' -Output Detailed
 # =============================================================================
 
-Describe 'GestoreModalitaConsumo - Write-Log e Play-NotificationSound' {
+Describe 'PerformanceManagerGB - Write-Log e Play-NotificationSound' {
 
     BeforeAll {
         # --- Percorso log di test in TEMP (scrivibile, non richiede admin) ---

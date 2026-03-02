@@ -1,11 +1,11 @@
 #Requires -RunAsAdministrator
 # ============================================================================
-# Installa/Aggiorna il Task Pianificato per GestoreModalitaConsumo
+# Installa/Aggiorna il Task Pianificato per PerformanceManagerGB
 # Eseguire una sola volta da un terminale con privilegi di Amministratore
 # ============================================================================
 
 $taskName   = "Samsung Performance Mode Manager"
-$scriptPath = "C:\Scripts\GestoreModalitaConsumo.ps1"
+$scriptPath = "C:\Scripts\PerformanceManagerGB.ps1"
 
 # Verifica che lo script esista
 if (-not (Test-Path $scriptPath)) {
@@ -20,9 +20,12 @@ if ($existing) {
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
 }
 
-# --- Azione: PowerShell 7+ nascosto, non interattivo ---
+# --- Azione: preferisce PS7 (path assoluto), fallback a Windows PowerShell 5.1 ---
+$pwshCmd = Get-Command 'pwsh.exe' -ErrorAction SilentlyContinue
+$psExe   = if ($pwshCmd) { $pwshCmd.Source } else { 'powershell.exe' }
+Write-Host "Runtime selezionato: $psExe" -ForegroundColor Cyan
 $action = New-ScheduledTaskAction `
-    -Execute "pwsh.exe" `
+    -Execute $psExe `
     -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$scriptPath`""
 
 # --- Trigger: all'accesso dell'utente corrente ---

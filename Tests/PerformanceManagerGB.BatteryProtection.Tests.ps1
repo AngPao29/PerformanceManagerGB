@@ -1,5 +1,5 @@
 # =============================================================================
-# Pester v5 - Test per GestoreModalitaConsumo.ps1
+# Pester v5 - Test per PerformanceManagerGB.ps1
 # Funzione coperta: Get-BatteryProtectionLimit
 #
 # Copre:
@@ -16,7 +16,7 @@
 # NON accede al registro reale: usa Mock di Pester su Get-ItemProperty.
 # =============================================================================
 
-Describe 'GestoreModalitaConsumo - Get-BatteryProtectionLimit' {
+Describe 'PerformanceManagerGB - Get-BatteryProtectionLimit' {
 
     BeforeAll {
         $script:regProtectBattery      = 'HKLM:\SOFTWARE\Samsung\SamsungSettings\ModuleProtectBattery'

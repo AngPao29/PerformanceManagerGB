@@ -20,7 +20,7 @@ Il task partirà automaticamente ad ogni accesso.
 
 ## Aggiornamento dopo modifiche
 
-Il task pianificato punta direttamente a `C:\Scripts\GestoreModalitaConsumo.ps1`, quindi basta:
+Il task pianificato punta direttamente a `C:\Scripts\PerformanceManagerGB.ps1`, quindi basta:
 
 1. **Fermare il task in esecuzione** (terminale Amministratore):
    ```powershell

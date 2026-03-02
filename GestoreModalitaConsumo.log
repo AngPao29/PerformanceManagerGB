@@ -1469,3 +1469,144 @@
 2026-03-02 12:24:23  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
 2026-03-02 12:24:54  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
 2026-03-02 12:24:54  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:25:24  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:25:24  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:25:54  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:25:54  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:26:24  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:26:24  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:26:55  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:26:55  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:27:25  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:27:25  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:27:55  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:27:55  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:28:26  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:28:26  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:28:56  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:28:56  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:29:26  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:29:26  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:29:56  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:29:56  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:30:27  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:30:27  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:30:57  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:30:57  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:31:27  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:31:27  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:31:58  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:31:58  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:32:28  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:32:28  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:32:58  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:32:58  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:33:28  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:33:28  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:33:59  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:33:59  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:34:29  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:34:29  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:34:59  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:34:59  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:35:30  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:35:30  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:36:00  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:36:00  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:36:30  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:36:30  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:37:01  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:37:01  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:37:31  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:37:31  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:38:01  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:38:01  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:38:31  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:38:31  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:39:02  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:39:02  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:39:32  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:39:32  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:40:02  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:40:02  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:40:32  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:40:32  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:40:42  INFO  Watcher EventLog Kernel-Power/105 registrato (C# nativo). Rilevamento AC istantaneo.
+2026-03-02 12:40:42  INFO  Watcher WMI PowerManagementEvent registrato (C# nativo, backup).
+2026-03-02 12:40:42  Script avviato (PID 18836). Polling ogni 30 secondi, 2 watcher C# attivi.
+2026-03-02 12:40:42  INFO  System Tray icon avviata.
+2026-03-02 12:40:42  INFO  [avvio] Safe-default: reimpostata OTTIMIZZATA (era Prestazioni Elevate).
+2026-03-02 12:40:43  DEBUG [avvio] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Ottimizzata(2)
+2026-03-02 12:40:43  INFO  [avvio] Modalita' -> PRESTAZIONI ELEVATE (AC=True, carica 80% >= limite 80% - tolleranza 1%)
+2026-03-02 12:41:13  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:41:13  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:41:43  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:41:43  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:42:14  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:42:14  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:42:44  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:42:44  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:43:14  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:43:14  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:43:45  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:43:45  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:44:15  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:44:15  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:44:45  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:44:45  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:45:16  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:45:16  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:45:46  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:45:46  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:46:16  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:46:16  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:46:46  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:46:46  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:47:17  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:47:17  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:47:47  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:47:47  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:48:17  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:48:17  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:48:48  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:48:48  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:49:18  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:49:18  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:49:48  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:49:48  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:50:19  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:50:19  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:50:49  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:50:49  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:51:19  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:51:19  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:51:49  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:51:49  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:52:20  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:52:20  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:52:50  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:52:50  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:53:20  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:53:20  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:53:51  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:53:51  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:54:21  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:54:21  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:54:51  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:54:51  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:55:22  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:55:22  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:55:52  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:55:52  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:56:22  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:56:22  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:56:52  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:56:52  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:57:23  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:57:23  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:57:53  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:57:53  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:58:23  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:58:23  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate
+2026-03-02 12:58:54  DEBUG [polling] Stato: batteria=AC (connesso)(2), carica=80%, AC=True, limite=80%, modalita=Prestazioni Elevate(3)
+2026-03-02 12:58:54  DEBUG [polling] Nessun cambio: gia' in Prestazioni Elevate

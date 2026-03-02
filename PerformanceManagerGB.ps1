@@ -80,7 +80,7 @@ $pollInterval = 30
 $defaultProtectionLimit = 80
 
 # --- File di log (stesso percorso dello script, max ~500 KB) ---
-$logFile    = Join-Path $PSScriptRoot "GestoreModalitaConsumo.log"
+$logFile    = Join-Path $PSScriptRoot "PerformanceManagerGB.log"
 $logMaxSize = 512KB
 
 # --- Stato condiviso con la System Tray (thread-safe) ---
@@ -363,7 +363,7 @@ public static class DpiHelper {
         # --- NotifyIcon ---
         $notify = [System.Windows.Forms.NotifyIcon]::new()
         $notify.Icon    = $iconOpt
-        $notify.Text    = "Gestore Modalita' Consumo"
+        $notify.Text    = "Performance Manager GB"
         $notify.Visible = $true
 
         # --- Menu contestuale ---
@@ -610,7 +610,7 @@ $null = Register-ObjectEvent -InputObject ([AppDomain]::CurrentDomain) -EventNam
         Set-ItemProperty -Path 'HKLM:\SOFTWARE\Samsung\SamsungSettings\ModulePerformance' -Name 'Value' -Value 2 -ErrorAction Stop
         $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
         "$ts  INFO  [shutdown] Modalita' reimpostata a OTTIMIZZATA prima della chiusura." |
-            Out-File -FilePath (Join-Path $PSScriptRoot 'GestoreModalitaConsumo.log') -Append -Encoding utf8
+            Out-File -FilePath (Join-Path $PSScriptRoot 'PerformanceManagerGB.log') -Append -Encoding utf8
     } catch { }
 }
 
@@ -621,6 +621,29 @@ $null = Register-ObjectEvent -InputObject ([AppDomain]::CurrentDomain) -EventNam
 Add-Type -AssemblyName System.Management -ErrorAction Stop
 
 $runtimeDir = [System.IO.Path]::GetDirectoryName([object].Assembly.Location)
+
+# Seleziona i riferimenti in base al runtime (.NET Framework vs .NET 5+)
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    # PS7+ / .NET 5+ / Roslyn: path assoluti obbligatori
+    $interopDll = Join-Path $runtimeDir 'System.Runtime.InteropServices.dll'
+    if (-not (Test-Path $interopDll)) {
+        # Fallback: localizza l'assembly tramite il tipo già caricato
+        $interopDll = [System.Runtime.InteropServices.Marshal].Assembly.Location
+    }
+    $addTypeRefs = @(
+        $interopDll,
+        [System.Diagnostics.Eventing.Reader.EventLogWatcher].Assembly.Location,
+        [System.Management.ManagementEventWatcher].Assembly.Location
+    )
+} else {
+    # PS 5.1 / .NET Framework / CodeDOM: nomi brevi GAC
+    # System.Runtime.InteropServices è in mscorlib → NON includerlo esplicitamente
+    $addTypeRefs = @(
+        'System.Core',       # EventLogWatcher (System.Diagnostics.Eventing.Reader)
+        'System.Management'  # ManagementEventWatcher
+    )
+}
+
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -649,11 +672,7 @@ public class PowerWakeHandler
         watcher.EventArrived += (s, e) => SetEvent(_handle);
     }
 }
-'@ -ReferencedAssemblies @(
-    (Join-Path $runtimeDir 'System.Runtime.InteropServices.dll'),
-    [System.Diagnostics.Eventing.Reader.EventLogWatcher].Assembly.Location,
-    [System.Management.ManagementEventWatcher].Assembly.Location
-) -ErrorAction Stop
+'@ -ReferencedAssemblies $addTypeRefs -ErrorAction Stop
 
 $wakeHandler = [PowerWakeHandler]::new($wakeSignal.SafeWaitHandle.DangerousGetHandle())
 
@@ -713,7 +732,8 @@ try {
     $currentModeAtStart = [int](Get-ItemProperty -Path $regPerformance -ErrorAction Stop).Value
     if ($currentModeAtStart -ne $MODE_OPTIMIZED) {
         Set-PerformanceMode -Mode $MODE_OPTIMIZED
-        Write-Log "INFO  [avvio] Safe-default: reimpostata OTTIMIZZATA (era $($MODE_NAMES[$currentModeAtStart] ?? $currentModeAtStart))."
+        $prevModeName = if ($null -ne $MODE_NAMES[$currentModeAtStart]) { $MODE_NAMES[$currentModeAtStart] } else { "$currentModeAtStart" }
+        Write-Log "INFO  [avvio] Safe-default: reimpostata OTTIMIZZATA (era $prevModeName)."
     }
 } catch {
     Write-Log "WARN  [avvio] Impossibile impostare safe-default: $_"

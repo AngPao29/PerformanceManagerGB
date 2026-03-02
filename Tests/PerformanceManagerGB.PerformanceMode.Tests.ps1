@@ -1,5 +1,5 @@
 # =============================================================================
-# Pester v5 - Test per GestoreModalitaConsumo.ps1
+# Pester v5 - Test per PerformanceManagerGB.ps1
 # Funzioni coperte:
 #   - Get-CurrentPerformanceMode
 #   - Set-PerformanceMode
@@ -11,7 +11,7 @@
 # NON accede al registro reale: usa Mock di Pester.
 # =============================================================================
 
-Describe 'GestoreModalitaConsumo - PerformanceMode' {
+Describe 'PerformanceManagerGB - PerformanceMode' {
 
     BeforeAll {
         $script:regPerformance        = 'HKLM:\SOFTWARE\Samsung\SamsungSettings\ModulePerformance'

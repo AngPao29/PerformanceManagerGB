@@ -1,5 +1,5 @@
 # =============================================================================
-# Pester v5 - Test per GestoreModalitaConsumo.ps1
+# Pester v5 - Test per PerformanceManagerGB.ps1
 # Funzione coperta: Update-PerformanceMode
 #
 # Scenari coperti (14 totali):
@@ -19,10 +19,10 @@
 #  14.  AC=true, carica=78%, zona isteresi -> nessun Set-PerformanceMode
 #
 # Esecuzione:
-#   Invoke-Pester -Path 'C:\Scripts\Tests\GestoreModalitaConsumo.UpdateMode.Tests.ps1' -Output Detailed
+#   Invoke-Pester -Path 'C:\Scripts\Tests\PerformanceManagerGB.UpdateMode.Tests.ps1' -Output Detailed
 # =============================================================================
 
-Describe 'GestoreModalitaConsumo - Update-PerformanceMode' {
+Describe 'PerformanceManagerGB - Update-PerformanceMode' {
 
     BeforeAll {
 
