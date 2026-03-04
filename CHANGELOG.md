@@ -8,6 +8,14 @@ versioning secondo [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-03-04
+### Fixed
+- "Forza Ottimizzata" e "Forza Prestazioni Elevate" ora applicano la modalità istantaneamente: i click handler segnalano il `WakeSignal` condiviso, risvegliando immediatamente il loop principale invece di attendere il prossimo ciclo di polling (30 s)
+- Il colore dell'icona nella system tray si aggiorna subito dopo aver forzato una modalità (conseguenza diretta del fix precedente)
+- Prevenuta race condition: se un evento hardware e un override manuale coincidono nello stesso ciclo, l'override non viene annullato prematuramente (`$justForced`)
+- Limite tooltip `NotifyIcon` alzato da 63 a 127 caratteri (massimo reale .NET) per evitare troncamento del testo "Override manuale attivo"
+- La modalità forzata manualmente dalla tray non viene più sovrascritta dal ciclo automatico: introdotto `ManualOverrideMode` che sospende la valutazione automatica fino al prossimo evento hardware genuino (AC plug/unplug)
+
 ## [1.0.3] - 2026-03-02
 ### Changed
 - Rinominato il progetto in PerformanceManagerGB nel README e negli script

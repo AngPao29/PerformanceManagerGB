@@ -92,8 +92,10 @@ $script:trayState = [hashtable]::Synchronized(@{
     SoundEnabled       = $true
     NotifPopupEnabled  = $true
     RequestedMode      = $null
+    ManualOverrideMode = $null
     RequestExit        = $false
     LogFile            = $logFile
+    WakeSignal         = $null   # popolato dopo la creazione dell'AutoResetEvent
 })
 
 # ============================================================================
@@ -375,11 +377,27 @@ public static class DpiHelper {
         [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
 
         $forceOptItem = [System.Windows.Forms.ToolStripMenuItem]::new("Forza Ottimizzata")
-        $forceOptItem.Add_Click({ $State.RequestedMode = 2 }.GetNewClosure())
+        $forceOptItem.Add_Click({
+            if ($State.ManualOverrideMode -eq 2) {
+                # Deseleziona: rimuove override e ripristina il flusso automatico
+                $State.ManualOverrideMode = $null
+            } else {
+                $State.RequestedMode = 2
+            }
+            try { $State.WakeSignal.Set() } catch { }
+        }.GetNewClosure())
         [void]$menu.Items.Add($forceOptItem)
 
         $forcePerfItem = [System.Windows.Forms.ToolStripMenuItem]::new("Forza Prestazioni Elevate")
-        $forcePerfItem.Add_Click({ $State.RequestedMode = 3 }.GetNewClosure())
+        $forcePerfItem.Add_Click({
+            if ($State.ManualOverrideMode -eq 3) {
+                # Deseleziona: rimuove override e ripristina il flusso automatico
+                $State.ManualOverrideMode = $null
+            } else {
+                $State.RequestedMode = 3
+            }
+            try { $State.WakeSignal.Set() } catch { }
+        }.GetNewClosure())
         [void]$menu.Items.Add($forcePerfItem)
 
         [void]$menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
@@ -449,10 +467,17 @@ public static class DpiHelper {
             $ac     = if ($State.IsOnAC) { "AC" } else { "Batteria" }
             $paused = $State.IsPaused
 
-            # Tooltip (max 63 caratteri per NotifyIcon.Text)
+            $manualOverride = $State.ManualOverrideMode
+
+            # Checkmark radio-style sui due item Forza X (solo uno selezionato alla volta)
+            $forceOptItem.Checked  = ($manualOverride -eq 2)
+            $forcePerfItem.Checked = ($manualOverride -eq 3)
+
+            # Tooltip (max 127 caratteri per NotifyIcon.Text in .NET 2.0+)
             $tip = "Modalita': $mode`nCarica: $charge% ($ac)"
             if ($paused) { $tip += "`nSospeso" }
-            if ($tip.Length -gt 63) { $tip = $tip.Substring(0, 63) }
+            elseif ($null -ne $manualOverride) { $tip += "`nOverride manuale attivo" }
+            if ($tip.Length -gt 127) { $tip = $tip.Substring(0, 127) }
             $notify.Text = $tip
 
             # Icona
@@ -462,7 +487,7 @@ public static class DpiHelper {
 
             # Status nel menu
             $statusItem.Text = "$mode | $charge% ($ac)" +
-                $(if ($paused) { " | Sospeso" } else { "" })
+                $(if ($paused) { " | Sospeso" } elseif ($null -ne $manualOverride) { " | Override" } else { "" })
 
             # Shutdown richiesto dal loop principale
             if ($State.RequestExit) { [System.Windows.Forms.Application]::Exit() }
@@ -541,6 +566,14 @@ function Update-PerformanceMode {
         return
     }
 
+    # Se l'utente ha forzato manualmente una modalita', rispettarla finche' non arriva un evento hardware
+    if ($null -ne $script:trayState.ManualOverrideMode) {
+        $overrideName = $MODE_NAMES[$script:trayState.ManualOverrideMode]
+        if (-not $overrideName) { $overrideName = "$($script:trayState.ManualOverrideMode)" }
+        Write-Log "DEBUG [$Trigger] Override manuale attivo ($overrideName), salto valutazione automatica."
+        return
+    }
+
     # --- Logica decisionale con isteresi ---
     # Attiva "Elevate" quando: AC + carica >= (limite - tolleranza)
     # Torna a "Ottimizzata" quando: non AC, oppure carica < (limite - margine)
@@ -596,6 +629,7 @@ function Update-PerformanceMode {
 # Fallback: polling ogni $pollInterval secondi per variazioni graduali.
 # ============================================================================
 $wakeSignal = [System.Threading.AutoResetEvent]::new($false)
+$script:trayState.WakeSignal = $wakeSignal   # condiviso con la tray per segnalare immediatamente
 $eventLogWatcher = $null
 $wmiWatcher = $null
 
@@ -794,6 +828,7 @@ while ($true) {
     }
 
     $requestedMode = $script:trayState.RequestedMode
+    $justForced = $false
     if ($null -ne $requestedMode) {
         $script:trayState.RequestedMode = $null
         $reqModeName = $MODE_NAMES[$requestedMode]
@@ -805,12 +840,24 @@ while ($true) {
                 Show-ModeNotification -ModeName $reqModeName -IconGlyph $glyph -AccentColor $color -Subtitle "Impostata manualmente"
                 Play-NotificationSound
                 $script:trayState.CurrentMode = $reqModeName
+                $script:trayState.ManualOverrideMode = $requestedMode
+                $justForced = $true
                 Write-Log "INFO  [tray] Modalita' forzata a $reqModeName dall'utente."
             }
             catch {
                 Write-Log "ERROR [tray] Impossibile forzare modalita': $_"
             }
         }
+    }
+
+    # Se arriva un evento hardware genuino (AC plug/unplug), cancella l'override manuale.
+    # $justForced protegge dalla race condition: se l'utente ha appena forzato nello stesso ciclo,
+    # l'override non viene azzerato immediatamente.
+    if ($trigger -eq 'evento' -and -not $justForced -and $null -ne $script:trayState.ManualOverrideMode) {
+        $overrideName = $MODE_NAMES[$script:trayState.ManualOverrideMode]
+        if (-not $overrideName) { $overrideName = "$($script:trayState.ManualOverrideMode)" }
+        Write-Log "INFO  [evento] Override manuale ($overrideName) rimosso: ripresa gestione automatica."
+        $script:trayState.ManualOverrideMode = $null
     }
 
     try {
